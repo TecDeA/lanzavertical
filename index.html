@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="Simulador del movimiento vertical de uno o dos objetos bajo gravedad común, con cálculo del punto y el instante de encuentro.">
+
+<!-- PWA / Mobile · rutas absolutas al subdirectorio /lanzavertical/
+     para no interferir con el manifest/SW del portal principal -->
+<base href="/lanzavertical/">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MovVertical">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- Open Graph (URL absoluta para scrapers sociales) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tecdea.github.io/lanzavertical/">
+<meta property="og:title" content="Movimiento vertical · uno o dos objetos">
+<meta property="og:description" content="Simulador PWA del movimiento vertical y del encuentro de uno o dos móviles.">
+<meta property="og:image" content="https://tecdea.github.io/lanzavertical/icons/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://tecdea.github.io/lanzavertical/icons/og-image.png">
+
+<title>Movimiento vertical · Simulador PWA</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --card-a:rgba(26,35,64,.95);
+    --card-b:rgba(19,26,48,.95);
+    --line:#2a3556;
+    --text:#e8edff;
+    --muted:#93a0c8;
+    --dim:#6f7ca6;
+    --blue:#4da3ff;
+    --orange:#ff7a59;
+    --green:#37d67a;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100dvh;
+    background:radial-gradient(1200px 700px at 15% -10%, #1b2a52 0%, #0b1020 55%) fixed;
+    color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:clamp(10px,2.2vw,22px);
+    -webkit-text-size-adjust:100%;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* ---------- Encabezado ---------- */
+  .head{max-width:1400px;margin:0 auto 14px}
+  .head-row{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    gap:16px;flex-wrap:wrap;
+  }
+  .head h1{
+    font-size:clamp(1.1rem,2.7vw,1.7rem);
+    margin:0 0 5px;letter-spacing:-.02em;font-weight:800;
+  }
+  .head h1 span{color:var(--blue)}
+  .head p{margin:0;color:var(--muted);font-size:clamp(.78rem,1.6vw,.94rem);line-height:1.45}
+
+  /* ---------- Botón de ayuda ---------- */
+  .help-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 14px;border-radius:10px;border:1px solid var(--line);
+    background:rgba(26,35,64,.65);color:var(--text);
+    font-weight:700;font-size:.85rem;cursor:pointer;font-family:inherit;
+    transition:.15s;white-space:nowrap;
+  }
+  .help-btn:hover{background:rgba(77,163,255,.18);border-color:var(--blue);color:#fff}
+  .help-btn:active{transform:translateY(1px)}
+  .help-icon{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:20px;height:20px;border-radius:50%;
+    background:linear-gradient(180deg,#4da3ff,#2f7fe0);
+    color:#04122b;font-weight:900;font-size:.95rem;
+    box-shadow:0 0 10px rgba(77,163,255,.4);
+  }
+
+  /* ---------- Modal ---------- */
+  .modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal[hidden]{display:none}
+  .modal-backdrop{position:absolute;inset:0;background:rgba(5,8,18,.78);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  .modal-content{
+    position:relative;max-width:580px;width:100%;max-height:88vh;overflow:hidden;
+    display:flex;flex-direction:column;
+    background:linear-gradient(180deg,var(--card-a),var(--card-b));
+    border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+    animation:pop .22s ease-out;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .modal-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 18px;border-bottom:1px solid rgba(120,145,200,.18);
+  }
+  .modal-head h2{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:-.01em}
+  .modal-head h2 span{color:var(--blue)}
+  .modal-close{
+    width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
+    background:transparent;color:var(--text);font-size:1.4rem;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:.15s;
+  }
+  .modal-close:hover{background:rgba(255,122,89,.18);border-color:var(--orange);color:#fff}
+  .modal-body{padding:18px 20px;overflow-y:auto;font-size:.9rem;line-height:1.6}
+  .modal-body .lead{
+    color:#c3cdf0;font-weight:600;margin:0 0 16px;font-size:.95rem;
+    padding:12px 14px;background:rgba(77,163,255,.08);
+    border-left:3px solid var(--blue);border-radius:8px;
+  }
+  .modal-body h3{
+    margin:18px 0 8px;font-size:.72rem;font-weight:800;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--blue);
+  }
+  .modal-body h3:first-of-type{margin-top:0}
+  .modal-body ul{margin:6px 0 12px;padding-left:20px}
+  .modal-body li{margin-bottom:8px;color:var(--muted)}
+  .modal-body li strong{color:var(--text)}
+  .modal-body p{margin:0 0 10px;color:var(--muted)}
+  .modal-body code{
+    background:rgba(77,163,255,.12);color:#9ecbff;padding:1px 5px;
+    border-radius:5px;font-size:.92em;font-family:ui-monospace,monospace;
+  }
+  .modal-body kbd{
+    background:rgba(36,48,85,.7);border:1px solid var(--line);
+    color:var(--text);padding:1px 7px;border-radius:5px;
+    font-size:.82em;font-family:ui-monospace,monospace;
+    box-shadow:0 1px 0 rgba(0,0,0,.3);
+  }
+
+  /* ---------- Layout ---------- */
+  .layout{
+    max-width:1400px;margin:0 auto;
+    display:grid;gap:clamp(10px,1.6vw,18px);
+    grid-template-columns:1fr;
+  }
+  @media (min-width:980px){
+    .layout{grid-template-columns:minmax(0,1.45fr) minmax(310px,1fr);align-items:start}
+  }
+  .col{display:grid;gap:clamp(10px,1.6vw,18px);min-width:0;align-content:start}
+
+  .card{
+    background:linear-gradient(180deg,var(--card-a),var(--card-b));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:clamp(10px,1.4vw,16px);
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+    min-width:0;
+  }
+  .card-title{
+    margin:0 0 10px;font-size:.72rem;font-weight:800;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+  }
+
+  /* ---------- Títulos de canvas ---------- */
+  .canvas-title{
+    display:flex;align-items:center;gap:8px;
+    margin:0 0 10px;font-size:.86rem;font-weight:800;
+    color:var(--text);letter-spacing:-.005em;
+  }
+  .canvas-title::before{
+    content:"";display:inline-block;width:3px;height:16px;
+    background:linear-gradient(180deg,var(--blue),var(--green));
+    border-radius:2px;
+  }
+  .canvas-title .sub{font-weight:600;color:var(--dim);font-size:.78rem}
+
+  canvas{display:block;width:100%;border-radius:10px}
+  #scene{height:clamp(290px,46vh,540px)}
+  #graph{height:clamp(140px,20vh,215px)}
+
+  /* ---------- Selector de modo ---------- */
+  .mode-toggle{
+    display:grid;grid-template-columns:1fr 1fr;gap:6px;
+    background:rgba(10,15,31,.55);padding:4px;border-radius:10px;
+    border:1px solid var(--line);
+  }
+  .mode-btn{
+    padding:9px 10px;border-radius:8px;border:1px solid transparent;
+    background:transparent;color:var(--muted);font-weight:700;font-size:.82rem;
+    cursor:pointer;transition:.15s;font-family:inherit;
+  }
+  .mode-btn:hover{color:var(--text);background:rgba(77,163,255,.08)}
+  .mode-btn.active{
+    background:linear-gradient(180deg,#4da3ff,#2f7fe0);
+    color:#04122b;border-color:#4da3ff;
+    box-shadow:0 0 0 1px rgba(77,163,255,.35),0 4px 14px rgba(77,163,255,.25);
+  }
+
+  /* ---------- Bloques por objeto ---------- */
+  .obj-block{
+    margin-top:14px;padding-top:12px;
+    border-top:1px dashed rgba(120,145,200,.18);
+  }
+  .obj-block:first-of-type{border-top:0;margin-top:6px;padding-top:0}
+  .obj-label{
+    font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;
+  }
+  .obj-label::before{
+    content:"";width:9px;height:9px;border-radius:50%;display:inline-block;
+  }
+  .obj-block[data-obj="A"] .obj-label::before{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+  .obj-block[data-obj="B"] .obj-label::before{background:var(--orange);box-shadow:0 0 8px var(--orange)}
+
+  /* ---------- Controles ---------- */
+  .field{margin-bottom:13px}
+  .field:last-child{margin-bottom:0}
+  .field-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    gap:8px;font-size:.8rem;margin-bottom:2px;
+  }
+  .field-head label{color:#c3cdf0;font-weight:600}
+  .val{
+    font-variant-numeric:tabular-nums;font-weight:800;
+    color:var(--blue);font-size:.82rem;white-space:nowrap;
+  }
+  .hint{margin:1px 0 0;font-size:.68rem;color:var(--dim);line-height:1.35}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:26px;background:transparent;cursor:pointer;margin:0;display:block;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:#243055}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:18px;height:18px;border-radius:50%;
+    background:var(--blue);border:2px solid #0b1020;margin-top:-6px;
+    box-shadow:0 0 0 1px var(--blue),0 0 12px rgba(77,163,255,.55);
+  }
+  input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:#243055}
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--blue);
+    border:2px solid #0b1020;box-shadow:0 0 0 1px var(--blue);
+  }
+  input[type=range]:focus-visible{outline:2px solid var(--blue);outline-offset:4px;border-radius:8px}
+
+  .actions{display:flex;gap:8px;margin:12px 0 14px}
+  .btn{
+    flex:1;padding:11px 12px;border-radius:10px;border:1px solid #2f3d63;
+    background:#1c2745;color:#dfe7ff;font-size:.85rem;font-weight:700;
+    cursor:pointer;transition:.15s;font-family:inherit;
+    touch-action:manipulation;
+  }
+  .btn:hover{background:#243357;border-color:#3d4f7d}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{
+    background:linear-gradient(180deg,#4da3ff,#2f7fe0);
+    border-color:#4da3ff;color:#04122b;
+  }
+  .btn.primary:hover{filter:brightness(1.08)}
+
+  /* ---------- Resultados ---------- */
+  .status{
+    padding:10px 12px;border-radius:10px;font-size:.8rem;font-weight:700;
+    margin-bottom:11px;border:1px solid;line-height:1.4;
+  }
+  .status.ok{background:rgba(55,214,122,.12);border-color:rgba(55,214,122,.45);color:#6ff0a4}
+  .status.no{background:rgba(255,122,89,.12);border-color:rgba(255,122,89,.45);color:#ffb199}
+  .status.info{background:rgba(77,163,255,.12);border-color:rgba(77,163,255,.45);color:#9ecbff}
+
+  .stats{display:grid;gap:6px}
+  .stat{
+    display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    padding:8px 10px;background:rgba(36,48,85,.5);border-radius:9px;font-size:.78rem;
+  }
+  .stat .k{color:var(--muted);min-width:0}
+  .stat .v{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stat.hi .v{color:var(--green)}
+  .stat.live{
+    background:rgba(36,48,85,.85);
+    border:1px solid rgba(120,145,200,.28);
+    position:relative;overflow:hidden;
+  }
+  .stat.live::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:linear-gradient(180deg,var(--blue),var(--green));
+  }
+  .stat.live .k{color:#a9b6de}
+  .stat.live .v{color:#e8edff;font-variant-numeric:tabular-nums}
+  .stat.live#rYA-row .v,
+  .stat.live#rVA-row .v{color:var(--blue)}
+  .stat.live#rYB-row .v,
+  .stat.live#rVB-row .v{color:var(--orange)}
+  .stat.live#rdist-row .v{color:var(--green)}
+  .stat.live .v .pulse{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--green);margin-right:6px;vertical-align:middle;
+    animation:pulse 1.4s ease-in-out infinite;
+    box-shadow:0 0 8px var(--green);
+  }
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+  .section-label{
+    grid-column:1/-1;
+    font-size:.62rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--dim);margin:6px 0 2px;padding:0 4px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .section-label::after{content:"";flex:1;height:1px;background:rgba(120,145,200,.15)}
+
+  .note{
+    margin:12px 0 0;font-size:.7rem;color:var(--dim);line-height:1.5;
+    border-top:1px solid rgba(120,145,200,.15);padding-top:10px;
+  }
+  .note b{color:#a9b6de}
+  .note code{
+    background:rgba(77,163,255,.12);color:#9ecbff;padding:1px 5px;
+    border-radius:5px;font-size:.95em;
+  }
+
+  /* ---------- Botón offline / SW update ---------- */
+  .toast{
+    position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+    z-index:1200;background:linear-gradient(180deg,var(--card-a),var(--card-b));
+    border:1px solid var(--line);border-radius:12px;
+    padding:12px 18px;display:flex;gap:12px;align-items:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:.85rem;
+    max-width:90vw;
+  }
+  .toast[hidden]{display:none}
+  .toast button{
+    padding:6px 12px;border-radius:8px;border:0;cursor:pointer;
+    background:var(--blue);color:#04122b;font-weight:800;font-family:inherit;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="head">
+  <div class="head-row">
+    <div>
+      <h1>Movimiento vertical de <span>uno o dos objetos</span></h1>
+      <p>Simulador PWA · física vertical bajo gravedad común</p>
+    </div>
+    <button class="help-btn" id="helpBtn" aria-haspopup="dialog" aria-controls="helpModal">
+      <span class="help-icon" aria-hidden="true">?</span>
+      <span>Ayuda</span>
+    </button>
+  </div>
+</header>
+
+<!-- ===================== Modal de ayuda ===================== -->
+<div class="modal" id="helpModal" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-content">
+    <header class="modal-head">
+      <h2 id="helpTitle">Cómo usar el <span>simulador</span></h2>
+      <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
+    </header>
+    <div class="modal-body">
+      <p class="lead">
+        Elige uno o dos móviles, cada uno con velocidad inicial hacia arriba o hacia abajo.
+        Si hay dos objetos bajo la misma gravedad, se calcula el punto y el instante de encuentro.
+      </p>
+
+      <h3>Modo de uso</h3>
+      <ul>
+        <li><strong>1 objeto / 2 objetos:</strong> selecciona cuántos móviles simular. En el modo de un solo objeto, A se centra en la escena.</li>
+        <li><strong>Altura inicial (h₀):</strong> distancia vertical sobre el suelo en el instante inicial. Ambos objetos pueden partir de cualquier altura, incluido el suelo (h = 0).</li>
+        <li><strong>Velocidad inicial (v₀):</strong> positiva hacia arriba, negativa hacia abajo. El rango va de −40 a +40 m/s.</li>
+        <li><strong>Gravedad (g):</strong> aceleración común a ambos objetos. Tierra ≈ 9.8 m/s², Luna ≈ 1.6 m/s², Júpiter ≈ 24.8 m/s².</li>
+        <li><strong>Reproducir / Pausa:</strong> inicia o detiene la animación. <kbd>Espacio</kbd> también funciona.</li>
+        <li><strong>Reiniciar:</strong> vuelve al instante t = 0. <kbd>R</kbd> también funciona.</li>
+        <li><strong>Velocidad de reproducción:</strong> multiplica el tiempo simulado para revisar con calma o acelerar.</li>
+      </ul>
+
+      <h3>Física</h3>
+      <p>Posición: <code>y(t) = h₀ + v₀·t − ½·g·t²</code></p>
+      <p>Velocidad: <code>v(t) = v₀ − g·t</code></p>
+      <p>Como ambos objetos comparten la misma <code>g</code>, el término <code>½·g·t²</code> se cancela al igualar posiciones y el instante de encuentro se simplifica a:</p>
+      <p style="text-align:center;font-size:1rem;color:var(--green);font-weight:700">
+        <code>t = (h₀A − h₀B) / (v₀B − v₀A)</code>
+      </p>
+      <p>Si <code>v₀B = v₀A</code> la distancia no cambia; si además las alturas coinciden, los objetos marchan siempre juntos.</p>
+
+      <h3>Resultados</h3>
+      <p>El panel de resultados se actualiza en tiempo real durante la animación y se divide en tres bloques:</p>
+      <ul>
+        <li><strong>Punto de encuentro</strong> (solo en modo 2): tiempo, altura y velocidad relativa del cruce.</li>
+        <li><strong>Trayectoria</strong>: altura máxima y tiempo de vuelo de cada objeto.</li>
+        <li><strong>Estado actual</strong>: tiempo, altura, velocidad instantánea y distancia entre móviles, actualizados cuadro a cuadro.</li>
+      </ul>
+
+      <h3>PWA</h3>
+      <p>Esta aplicación es instalable como PWA. En Chrome/Edge, pulsa <kbd>⋮</kbd> → <em>Instalar</em>. En iOS Safari, <em>Compartir</em> → <em>Añadir a inicio</em>. Funciona sin conexión una vez instalada.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Toast SW update ===================== -->
+<div class="toast" id="swToast" hidden>
+  <span>Hay una nueva versión disponible.</span>
+  <button id="swReload">Recargar</button>
+</div>
+
+<div class="layout">
+
+  <!-- ======== Columna principal: visualización ======== -->
+  <div class="col">
+    <div class="card">
+      <div class="canvas-title">Escena espacial <span class="sub">· movimiento vertical de los objetos</span></div>
+      <canvas id="scene" aria-label="Simulación espacial del movimiento vertical"></canvas>
+    </div>
+    <div class="card">
+      <div class="canvas-title">Gráfica altura frente a tiempo <span class="sub">· y(t) con punto de encuentro</span></div>
+      <canvas id="graph" aria-label="Gráfica altura frente a tiempo"></canvas>
+    </div>
+  </div>
+
+  <!-- ======== Columna lateral: controles + resultados ======== -->
+  <div class="col">
+
+    <div class="card">
+      <h2 class="card-title">Parámetros</h2>
+
+      <!-- Selector de número de objetos -->
+      <div class="field" style="margin-bottom:8px">
+        <div class="field-head">
+          <label>Número de objetos</label>
+        </div>
+        <div class="mode-toggle" role="tablist">
+          <button class="mode-btn" data-mode="1" role="tab">1 objeto</button>
+          <button class="mode-btn active" data-mode="2" role="tab">2 objetos</button>
+        </div>
+      </div>
+
+      <!-- ===== Objeto A ===== -->
+      <div class="obj-block" data-obj="A">
+        <div class="obj-label">Objeto A</div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="h0A">Altura inicial · h₀A</label>
+            <span class="val" id="h0Av">50 m</span>
+          </div>
+          <input type="range" id="h0A" min="0" max="200" step="1" value="50" aria-label="Altura inicial del objeto A">
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="v0A">Velocidad inicial · v₀A</label>
+            <span class="val" id="v0Av">0 m/s</span>
+          </div>
+          <input type="range" id="v0A" min="-40" max="40" step="1" value="0" aria-label="Velocidad inicial del objeto A">
+          <p class="hint">Positiva = hacia arriba · Negativa = hacia abajo</p>
+        </div>
+      </div>
+
+      <!-- ===== Objeto B ===== -->
+      <div class="obj-block" data-obj="B" id="objB-block">
+        <div class="obj-label">Objeto B</div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="h0B">Altura inicial · h₀B</label>
+            <span class="val" id="h0Bv">0 m</span>
+          </div>
+          <input type="range" id="h0B" min="0" max="200" step="1" value="0" aria-label="Altura inicial del objeto B">
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="v0B">Velocidad inicial · v₀B</label>
+            <span class="val" id="v0Bv">25 m/s</span>
+          </div>
+          <input type="range" id="v0B" min="-40" max="40" step="1" value="25" aria-label="Velocidad inicial del objeto B">
+          <p class="hint">Positiva = hacia arriba · Negativa = hacia abajo</p>
+        </div>
+      </div>
+
+      <!-- ===== Gravedad ===== -->
+      <div class="field" style="margin-top:14px;border-top:1px dashed rgba(120,145,200,.18);padding-top:12px">
+        <div class="field-head">
+          <label for="g">Gravedad · g</label>
+          <span class="val" id="gv">9.8 m/s²</span>
+        </div>
+        <input type="range" id="g" min="1" max="25" step="0.1" value="9.8" aria-label="Aceleración de la gravedad">
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="play">▶ Reproducir</button>
+        <button class="btn" id="reset">⟲ Reiniciar</button>
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="speed">Velocidad de reproducción</label>
+          <span class="val" id="speedv">1.0×</span>
+        </div>
+        <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1" aria-label="Velocidad de reproducción">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Resultados</h2>
+      <div class="status ok" id="rstatus">Listo.</div>
+
+      <div class="stats" id="stats">
+        <!-- Predicciones (modo 2) -->
+        <div class="section-label" id="lbl-meet">Punto de encuentro</div>
+        <div class="stat hi" id="rtime-row"><span class="k">Tiempo de encuentro</span><span class="v" id="rtime">—</span></div>
+        <div class="stat hi" id="rheight-row"><span class="k">Altura de encuentro</span><span class="v" id="rheight">—</span></div>
+        <div class="stat" id="rrel-row"><span class="k">Velocidad relativa v₀B − v₀A</span><span class="v" id="rrel">—</span></div>
+
+        <!-- Trayectorias -->
+        <div class="section-label">Trayectoria</div>
+        <div class="stat"><span class="k">Altura máxima de A</span><span class="v" id="rmaxA">—</span></div>
+        <div class="stat" id="rmaxB-row"><span class="k">Altura máxima de B</span><span class="v" id="rmaxB">—</span></div>
+        <div class="stat"><span class="k">Tiempo de vuelo de A</span><span class="v" id="rta">—</span></div>
+        <div class="stat" id="rtb-row"><span class="k">Tiempo de vuelo de B</span><span class="v" id="rtb">—</span></div>
+
+        <!-- Estado en tiempo real -->
+        <div class="section-label">Estado actual <span style="font-weight:600;color:var(--green)">· en vivo</span></div>
+        <div class="stat live"><span class="k"><span class="pulse"></span>Tiempo actual</span><span class="v" id="rnow">0.00 s</span></div>
+        <div class="stat live" id="rYA-row"><span class="k">Altura actual de A</span><span class="v" id="rYA">—</span></div>
+        <div class="stat live" id="rVA-row"><span class="k">Velocidad actual de A</span><span class="v" id="rVA">—</span></div>
+        <div class="stat live" id="rYB-row"><span class="k">Altura actual de B</span><span class="v" id="rYB">—</span></div>
+        <div class="stat live" id="rVB-row"><span class="k">Velocidad actual de B</span><span class="v" id="rVB">—</span></div>
+        <div class="stat live" id="rdist-row"><span class="k">Distancia entre A y B</span><span class="v" id="rdist">—</span></div>
+      </div>
+
+      <p class="note">
+        <b>Fórmulas.</b> Posición: <code>y(t) = h₀ + v₀·t − ½·g·t²</code>.
+        Velocidad: <code>v(t) = v₀ − g·t</code>. Como ambos objetos comparten
+        la misma <code>g</code>, el instante de encuentro se simplifica a
+        <code>t = (h₀A − h₀B) / (v₀B − v₀A)</code>.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* =========================================================
+     Referencias del DOM
+     ========================================================= */
+  const $ = id => document.getElementById(id);
+  const els = {
+    modeBtns: document.querySelectorAll('.mode-btn'),
+    objBBlock: $('objB-block'),
+    h0A:$('h0A'), v0A:$('v0A'),
+    h0Av:$('h0Av'), v0Av:$('v0Av'),
+    h0B:$('h0B'), v0B:$('v0B'),
+    h0Bv:$('h0Bv'), v0Bv:$('v0Bv'),
+    g:$('g'), gv:$('gv'),
+    play:$('play'), reset:$('reset'),
+    speed:$('speed'), speedv:$('speedv'),
+    scene:$('scene'), graph:$('graph'),
+    rstatus:$('rstatus'),
+    rtime:$('rtime'), rheight:$('rheight'), rrel:$('rrel'),
+    rta:$('rta'), rtb:$('rtb'),
+    rmaxA:$('rmaxA'), rmaxB:$('rmaxB'),
+    rnow:$('rnow'),
+    rYA:$('rYA'), rVA:$('rVA'),
+    rYB:$('rYB'), rVB:$('rVB'),
+    rdist:$('rdist'),
+    lblMeet:$('lbl-meet'),
+    rtimeRow:$('rtime-row'), rheightRow:$('rheight-row'), rrelRow:$('rrel-row'),
+    rmaxBRow:$('rmaxB-row'), rtbRow:$('rtb-row'),
+    rYBRow:$('rYB-row'), rVBRow:$('rVB-row'), rdistRow:$('rdist-row'),
+    // modal
+    helpBtn:$('helpBtn'), helpModal:$('helpModal'),
+    modalClose:$('modalClose'), modalBackdrop:$('modalBackdrop')
+  };
+
+  /* =========================================================
+     Estado
+     ========================================================= */
+  const S = {
+    mode: 2,
+    t: 0,
+    playing: false,
+    speed: 1,
+    last: null,
+    raf: null,
+    p: null,
+    D: null
+  };
+
+  /* =========================================================
+     Utilidades
+     ========================================================= */
+  function fmt(n, d){
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    const a = Math.abs(n);
+    if (a >= 1000) return n.toFixed(0);
+    if (a >= 100)  return n.toFixed(1);
+    if (a >= 10)   return n.toFixed(2);
+    return n.toFixed(d === undefined ? 2 : d);
+  }
+  function fmtSigned(n, d){
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    const s = n > 1e-9 ? '+' : (n < -1e-9 ? '−' : '');
+    return s + fmt(Math.abs(n), d);
+  }
+  function fmtTick(v){
+    if (Math.abs(v) < 1e-9) return '0';
+    if (Math.abs(v) >= 10) return v.toFixed(0);
+    if (Math.abs(v) >= 1)  return v.toFixed(1).replace(/\.0$/,'');
+    return v.toFixed(2);
+  }
+  function niceStep(max, target){
+    if (max <= 0) return 1;
+    const raw = max / target;
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / pow;
+    let m;
+    if (n <= 1) m = 1;
+    else if (n <= 2) m = 2;
+    else if (n <= 2.5) m = 2.5;
+    else if (n <= 5) m = 5;
+    else m = 10;
+    return m * pow;
+  }
+  function ensureSize(canvas){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    if (w < 4 || h < 4) return { ctx:null, w:0, h:0 };
+    const W = Math.max(1, Math.round(w * dpr));
+    const H = Math.max(1, Math.round(h * dpr));
+    if (canvas.width !== W || canvas.height !== H){
+      canvas.width = W;
+      canvas.height = H;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+
+  /* =========================================================
+     Física
+     ========================================================= */
+  function readParams(){
+    return {
+      mode: S.mode,
+      h0A : parseFloat(els.h0A.value),
+      v0A : parseFloat(els.v0A.value),
+      h0B : parseFloat(els.h0B.value),
+      v0B : parseFloat(els.v0B.value),
+      g   : parseFloat(els.g.value)
+    };
+  }
+  function flightTime(h0, v0, g){
+    if (g <= 0) return 0;
+    const disc = v0*v0 + 2*g*h0;
+    if (disc < 0) return 0;
+    return (v0 + Math.sqrt(disc)) / g;
+  }
+  function maxHeight(h0, v0, g){
+    return v0 > 0 ? h0 + (v0*v0) / (2*g) : h0;
+  }
+  function derive(p){
+    const { mode, h0A, v0A, h0B, v0B, g } = p;
+    const tA = flightTime(h0A, v0A, g);
+    const yAmax = maxHeight(h0A, v0A, g);
+    let tB = 0, yBmax = 0;
+    if (mode === 2){
+      tB = flightTime(h0B, v0B, g);
+      yBmax = maxHeight(h0B, v0B, g);
+    }
+    const top = Math.max(h0A, yAmax, mode === 2 ? Math.max(h0B, yBmax) : 0, 1);
+    let meet = null, reason = null, dv = 0;
+    if (mode === 2){
+      dv = v0B - v0A;
+      const dh = h0A - h0B;
+      if (Math.abs(dv) < 1e-9){
+        if (Math.abs(dh) < 1e-9){
+          meet = { t: 0, y: h0A, always: true };
+          reason = null;
+        } else {
+          reason = 'Las velocidades iniciales son iguales y las alturas distintas: la separación no cambia, no se encuentran.';
+        }
+      } else {
+        const t = dh / dv;
+        if (t <= 1e-6){
+          reason = 'El cruce ocurriría en t ≤ 0: en el instante inicial ya están del lado opuesto al necesario.';
+        } else {
+          const y = h0A + v0A*t - 0.5*g*t*t;
+          if (y <= 1e-6){
+            reason = 'El cruce ocurriría por debajo del suelo.';
+          } else if (t > Math.min(tA, tB) + 1e-6){
+            reason = 'Uno de los objetos ya habría tocado el suelo antes del cruce.';
+          } else {
+            meet = { t, y };
+          }
+        }
+      }
+    }
+    const duration = Math.max(tA, tB, meet && !meet.always ? meet.t : 0) * 1.08 + 0.25;
+    return { dv, tA, tB, yAmax, yBmax, top, meet, reason, duration };
+  }
+  function posA(t, p){ return Math.max(0, p.h0A + p.v0A*t - 0.5*p.g*t*t); }
+  function posB(t, p){ return Math.max(0, p.h0B + p.v0B*t - 0.5*p.g*t*t); }
+  function velA(t, p){ return p.v0A - p.g*t; }
+  function velB(t, p){ return p.v0B - p.g*t; }
+
+  /* =========================================================
+     Dibujo: escena espacial
+     ========================================================= */
+  function drawScene(){
+    const p = S.p, D = S.D;
+    const { ctx, w, h } = ensureSize(els.scene);
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#0e1630');
+    bg.addColorStop(1, '#0a0f1f');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    const mL = w < 430 ? 46 : 62;
+    const mR = 18, mT = 26, mB = 56;
+    const groundY = h - mB;
+    const topY = mT;
+    const worldTop = D.top * 1.12;
+    const scale = (groundY - topY) / worldTop;
+    const Y = y => groundY - y * scale;
+
+    const usableW = Math.max(40, w - mL - mR);
+    const xA = S.mode === 2 ? mL + usableW * 0.30 : mL + usableW * 0.5;
+    const xB = mL + usableW * 0.70;
+
+    const gg = ctx.createLinearGradient(0, groundY, 0, h);
+    gg.addColorStop(0, '#1d2949');
+    gg.addColorStop(1, '#0a0f1f');
+    ctx.fillStyle = gg;
+    ctx.fillRect(0, groundY, w, h - groundY);
+
+    ctx.strokeStyle = 'rgba(120,150,220,.65)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(w, groundY);
+    ctx.stroke();
+
+    const step = niceStep(worldTop, 6);
+    const tickFont = (w < 430 ? 9 : 10) + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.font = tickFont;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let y = 0; y <= worldTop + 1e-9; y += step){
+      const py = Y(y);
+      if (py < topY - 1) break;
+      ctx.strokeStyle = 'rgba(120,145,200,.10)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mL - 4, py);
+      ctx.lineTo(w - mR, py);
+      ctx.stroke();
+      ctx.fillStyle = '#6f7ca6';
+      ctx.fillText(fmtTick(y), mL - 8, py);
+    }
+
+    ctx.setLineDash([3, 7]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(120,145,200,.22)';
+    ctx.beginPath();
+    ctx.moveTo(xA, Y(D.yAmax)); ctx.lineTo(xA, groundY);
+    ctx.stroke();
+    if (S.mode === 2){
+      ctx.beginPath();
+      ctx.moveTo(xB, Y(D.yBmax)); ctx.lineTo(xB, groundY);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    const rBall = Math.max(7, Math.min(12, w * 0.016));
+    if (S.mode === 2 && D.meet && !D.meet.always){
+      const my = Y(D.meet.y);
+      ctx.setLineDash([7, 6]);
+      ctx.strokeStyle = 'rgba(55,214,122,.75)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(mL - 4, my);
+      ctx.lineTo(w - mR, my);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(55,214,122,.55)';
+      ctx.lineWidth = 2;
+      [xA, xB].forEach(x => {
+        ctx.beginPath();
+        ctx.arc(x, my, rBall * 0.85, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.font = '700 ' + (w < 430 ? 10 : 11) + 'px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const label = 'Encuentro · ' + fmt(D.meet.y) + ' m · t = ' + fmt(D.meet.t) + ' s';
+      const above = my > 34;
+      ctx.textBaseline = above ? 'bottom' : 'top';
+      ctx.fillStyle = '#5fe89a';
+      ctx.fillText(label, mL + 4, above ? my - 7 : my + 7);
+    }
+
+    const yA = posA(S.t, p);
+    const pA = Y(yA);
+
+    ctx.beginPath();
+    ctx.arc(xA, Y(p.h0A), rBall * 0.62, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(77,163,255,.6)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    drawAltitude(ctx, xA, pA, groundY, 'rgba(77,163,255,.45)');
+
+    if (S.mode === 2){
+      const yB = posB(S.t, p);
+      const pB = Y(yB);
+      ctx.beginPath();
+      ctx.arc(xB, Y(p.h0B), rBall * 0.62, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,122,89,.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawAltitude(ctx, xB, pB, groundY, 'rgba(255,122,89,.45)');
+      drawBall(ctx, xB, pB, rBall, '#ff7a59', 'B', yB, 'right');
+    }
+
+    drawBall(ctx, xA, pA, rBall, '#4da3ff', 'A', yA, S.mode === 2 ? 'left' : 'right');
+
+    const barY = h - 20;
+    const barX = mL - 4;
+    const barW = Math.max(20, w - mR - barX);
+    ctx.fillStyle = 'rgba(120,145,200,.18)';
+    ctx.fillRect(barX, barY, barW, 5);
+    const prog = D.duration > 0 ? Math.min(1, S.t / D.duration) : 0;
+    const pg = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    pg.addColorStop(0, '#2f7fe0');
+    pg.addColorStop(1, '#5fe89a');
+    ctx.fillStyle = pg;
+    ctx.fillRect(barX, barY, barW * prog, 5);
+  }
+
+  function drawAltitude(ctx, x, yTop, groundY, color){
+    const grad = ctx.createLinearGradient(0, yTop, 0, groundY);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, yTop);
+    ctx.lineTo(x, groundY);
+    ctx.stroke();
+  }
+
+  function drawBall(ctx, x, y, r, color, name, height, side){
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3.2);
+    glow.addColorStop(0, color + '66');
+    glow.addColorStop(1, color + '00');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.4)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x - r * 0.3, y - r * 0.32, r * 0.32, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,.62)';
+    ctx.fill();
+
+    ctx.font = '800 ' + Math.round(r * 1.15) + 'px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#06101f';
+    ctx.fillText(name, x, y + 0.5);
+
+    ctx.font = '700 11px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillStyle = color;
+    if (side === 'left'){
+      ctx.textAlign = 'right';
+      ctx.fillText(fmt(height) + ' m', x - r - 9, y);
+    } else {
+      ctx.textAlign = 'left';
+      ctx.fillText(fmt(height) + ' m', x + r + 9, y);
+    }
+  }
+
+  /* =========================================================
+     Dibujo: gráfica y(t)
+     ========================================================= */
+  function drawGraph(){
+    const p = S.p, D = S.D;
+    const { ctx, w, h } = ensureSize(els.graph);
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const mL = w < 400 ? 40 : 50;
+    const mR = 14, mT = 16, mB = 24;
+    const x0 = mL, x1 = w - mR, y0 = h - mB, y1 = mT;
+    const T = Math.max(D.duration, 0.001);
+    const Hmax = D.top * 1.08;
+
+    const X = t => x0 + (t / T) * (x1 - x0);
+    const Y = y => y0 - (y / Hmax) * (y0 - y1);
+
+    ctx.fillStyle = 'rgba(10,15,31,.55)';
+    ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
+
+    ctx.strokeStyle = 'rgba(120,145,200,.10)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++){
+      const yy = y0 - (i / 4) * (y0 - y1);
+      ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x1, yy); ctx.stroke();
+      const xx = x0 + (i / 4) * (x1 - x0);
+      ctx.beginPath(); ctx.moveTo(xx, y1); ctx.lineTo(xx, y0); ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(140,160,210,.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, y1);
+    ctx.lineTo(x0, y0);
+    ctx.lineTo(x1, y0);
+    ctx.stroke();
+
+    ctx.fillStyle = '#6f7ca6';
+    ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(fmtTick(Hmax) + ' m', x0 - 5, y1 + 2);
+    ctx.fillText('0', x0 - 5, y0);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('0', x0, y0 + 5);
+    ctx.fillText(T.toFixed(1) + ' s', x1, y0 + 5);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillStyle = '#4da3ff';
+    ctx.fillText('● A', x0 + 7, y1 + 4);
+    if (S.mode === 2){
+      ctx.fillStyle = '#ff7a59';
+      ctx.fillText('● B', x0 + 38, y1 + 4);
+    }
+
+    plotCurve(ctx, t => posA(t, p), D.tA, X, Y, '#4da3ff');
+    if (S.mode === 2){
+      plotCurve(ctx, t => posB(t, p), D.tB, X, Y, '#ff7a59');
+    }
+
+    if (S.mode === 2 && D.meet && !D.meet.always){
+      const mx = X(D.meet.t), my = Y(D.meet.y);
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(55,214,122,.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mx, my); ctx.lineTo(mx, y0); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(mx, my); ctx.lineTo(x0, my); ctx.stroke();
+      ctx.setLineDash([]);
+
+      const halo = ctx.createRadialGradient(mx, my, 0, mx, my, 12);
+      halo.addColorStop(0, 'rgba(55,214,122,.55)');
+      halo.addColorStop(1, 'rgba(55,214,122,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(mx, my, 12, 0, Math.PI * 2); ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(mx, my, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#37d67a';
+      ctx.fill();
+      ctx.strokeStyle = '#0b1020';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    const cx = X(Math.min(S.t, T));
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(232,237,255,.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, y1); ctx.lineTo(cx, y0); ctx.stroke();
+    ctx.setLineDash([]);
+
+    const ya = posA(S.t, p);
+    dot(ctx, cx, Y(ya), '#4da3ff');
+    if (S.mode === 2){
+      const yb = posB(S.t, p);
+      dot(ctx, cx, Y(yb), '#ff7a59');
+    }
+  }
+
+  function plotCurve(ctx, fn, tMax, X, Y, color){
+    if (!(tMax > 1e-4)) return;
+    const N = 120;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++){
+      const t = tMax * i / N;
+      const x = X(t), y = Y(Math.max(0, fn(t)));
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  function dot(ctx, x, y, color){
+    ctx.beginPath();
+    ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#0b1020';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+
+  /* =========================================================
+     Render global + actualización del panel
+     ========================================================= */
+  function render(){
+    if (!S.p) return;
+    drawScene();
+    drawGraph();
+    updateLiveStats();
+  }
+
+  function updateLiveStats(){
+    const p = S.p;
+    const yA = posA(S.t, p);
+    const vA = velA(S.t, p);
+    els.rnow.textContent = fmt(S.t, 2) + ' s';
+    els.rYA.textContent = fmt(yA) + ' m';
+    els.rVA.textContent = fmtSigned(vA, 1) + ' m/s';
+    if (S.mode === 2){
+      const yB = posB(S.t, p);
+      const vB = velB(S.t, p);
+      els.rYB.textContent = fmt(yB) + ' m';
+      els.rVB.textContent = fmtSigned(vB, 1) + ' m/s';
+      els.rdist.textContent = fmt(Math.abs(yA - yB)) + ' m';
+    }
+  }
+
+  function updateResults(){
+    const D = S.D, p = S.p;
+    els.rta.textContent = fmt(D.tA) + ' s';
+    els.rmaxA.textContent = fmt(D.yAmax) + ' m';
+
+    if (S.mode === 2){
+      els.rtb.textContent = fmt(D.tB) + ' s';
+      els.rmaxB.textContent = fmt(D.yBmax) + ' m';
+      els.rrel.textContent = fmtSigned(D.dv, 1) + ' m/s';
+
+      if (D.meet && D.meet.always){
+        els.rstatus.className = 'status info';
+        els.rstatus.textContent =
+          'ℹ️ Ambos objetos comparten altura y velocidad iniciales: marchan siempre juntos.';
+        els.rtime.textContent = 't = 0+ s';
+        els.rheight.textContent = fmt(p.h0A) + ' m';
+      } else if (D.meet){
+        els.rstatus.className = 'status ok';
+        els.rstatus.textContent =
+          '✅ Se encuentran a ' + fmt(D.meet.y) + ' m del suelo, ' +
+          fmt(D.meet.t) + ' s después del lanzamiento.';
+        els.rtime.textContent = fmt(D.meet.t) + ' s';
+        els.rheight.textContent = fmt(D.meet.y) + ' m';
+      } else {
+        els.rstatus.className = 'status no';
+        els.rstatus.textContent = '❌ No se encuentran. ' + (D.reason || '');
+        els.rtime.textContent = '—';
+        els.rheight.textContent = '—';
+      }
+    } else {
+      els.rstatus.className = 'status info';
+      els.rstatus.textContent =
+        'ℹ️ Modo un solo objeto. Altura máxima de A: ' + fmt(D.yAmax) +
+        ' m, tiempo de vuelo: ' + fmt(D.tA) + ' s.';
+      els.rtime.textContent = '—';
+      els.rheight.textContent = '—';
+      els.rrel.textContent = '—';
+    }
+
+    updateLiveStats();
+  }
+
+  function applyMode(){
+    const isTwo = S.mode === 2;
+    els.objBBlock.style.display = isTwo ? '' : 'none';
+    [els.lblMeet, els.rtimeRow, els.rheightRow, els.rrelRow,
+     els.rmaxBRow, els.rtbRow, els.rYBRow, els.rVBRow, els.rdistRow]
+      .forEach(el => { if (el) el.style.display = isTwo ? '' : 'none'; });
+    els.modeBtns.forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.mode, 10) === S.mode);
+    });
+  }
+
+  function recompute(){
+    S.p = readParams();
+    S.D = derive(S.p);
+    updateResults();
+  }
+
+  function updateLabels(){
+    const p = readParams();
+    els.h0Av.textContent  = p.h0A.toFixed(0) + ' m';
+    els.v0Av.textContent  = (p.v0A > 0 ? '+' : (p.v0A < 0 ? '−' : '')) + Math.abs(p.v0A).toFixed(0) + ' m/s';
+    els.h0Bv.textContent  = p.h0B.toFixed(0) + ' m';
+    els.v0Bv.textContent  = (p.v0B > 0 ? '+' : (p.v0B < 0 ? '−' : '')) + Math.abs(p.v0B).toFixed(0) + ' m/s';
+    els.gv.textContent    = p.g.toFixed(1) + ' m/s²';
+    els.speedv.textContent = S.speed.toFixed(2).replace(/0$/,'').replace(/\.$/,'') + '×';
+  }
+
+  function updatePlayBtn(){
+    els.play.textContent = S.playing ? '⏸ Pausa' : '▶ Reproducir';
+  }
+
+  function stop(){
+    S.playing = false;
+    S.last = null;
+    if (S.raf){ cancelAnimationFrame(S.raf); S.raf = null; }
+    updatePlayBtn();
+  }
+  function resetSim(keepPlaying){
+    stop();
+    S.t = 0;
+    if (keepPlaying) start();
+    else render();
+  }
+  function start(){
+    if (S.playing) return;
+    if (S.t >= S.D.duration - 1e-6) S.t = 0;
+    S.playing = true;
+    S.last = null;
+    updatePlayBtn();
+    S.raf = requestAnimationFrame(loop);
+  }
+
+  /* =========================================================
+     Bucle de animación
+     ========================================================= */
+  function loop(ts){
+    if (!S.playing) return;
+    if (S.last === null) S.last = ts;
+    let dt = (ts - S.last) / 1000;
+    S.last = ts;
+    if (!isFinite(dt) || dt < 0) dt = 0;
+    dt = Math.min(dt, 0.05);
+    S.t += dt * S.speed;
+    if (S.t >= S.D.duration - 1e-9){
+      S.t = S.D.duration;
+      S.playing = false;
+      S.last = null;
+      updatePlayBtn();
+      render();
+      return;
+    }
+    render();
+    S.raf = requestAnimationFrame(loop);
+  }
+
+  /* =========================================================
+     Modal de ayuda
+     ========================================================= */
+  function openModal(){
+    els.helpModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    els.modalClose.focus();
+  }
+  function closeModal(){
+    els.helpModal.hidden = true;
+    document.body.style.overflow = '';
+    els.helpBtn.focus();
+  }
+  els.helpBtn.addEventListener('click', openModal);
+  els.modalClose.addEventListener('click', closeModal);
+  els.modalBackdrop.addEventListener('click', closeModal);
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !els.helpModal.hidden) closeModal();
+  });
+
+  /* =========================================================
+     Eventos
+     ========================================================= */
+  els.modeBtns.forEach(b => {
+    b.addEventListener('click', () => {
+      const m = parseInt(b.dataset.mode, 10);
+      if (m === S.mode) return;
+      stop();
+      S.t = 0;
+      S.mode = m;
+      applyMode();
+      updateLabels();
+      recompute();
+      render();
+    });
+  });
+
+  ['h0A', 'v0A', 'h0B', 'v0B', 'g'].forEach(id => {
+    els[id].addEventListener('input', () => {
+      stop();
+      S.t = 0;
+      updateLabels();
+      recompute();
+      render();
+    });
+  });
+
+  els.speed.addEventListener('input', () => {
+    S.speed = parseFloat(els.speed.value);
+    updateLabels();
+  });
+
+  els.play.addEventListener('click', () => {
+    if (S.playing) { stop(); render(); }
+    else start();
+  });
+
+  els.reset.addEventListener('click', () => resetSim(false));
+
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target === document.body){
+      e.preventDefault();
+      if (S.playing){ stop(); render(); } else start();
+    }
+    if ((e.key === 'r' || e.key === 'R') && e.target === document.body){
+      resetSim(false);
+    }
+    if (e.key === 'h' || e.key === 'H'){
+      if (e.target === document.body){
+        if (els.helpModal.hidden) openModal(); else closeModal();
+      }
+    }
+  });
+
+  if ('ResizeObserver' in window){
+    const ro = new ResizeObserver(() => render());
+    ro.observe(els.scene);
+    ro.observe(els.graph);
+  } else {
+    window.addEventListener('resize', () => render());
+  }
+  window.addEventListener('orientationchange', () => setTimeout(render, 120));
+
+  /* =========================================================
+     Lectura de parámetros por URL (soporta shortcuts PWA)
+     ========================================================= */
+  function readUrlParams(){
+    const u = new URL(window.location.href);
+    const mode = u.searchParams.get('mode');
+    if (mode === '1' || mode === '2') S.mode = parseInt(mode, 10);
+  }
+
+  /* =========================================================
+     Arranque
+     ========================================================= */
+  readUrlParams();
+  applyMode();
+  updateLabels();
+  recompute();
+  S.t = 0;
+  render();
+
+  /* =========================================================
+     Service Worker registration (PWA)
+     ----------------------------------------------------------------
+     Registro acotado al subdirectorio /lanzavertical/ para que
+     el SW de esta app NO interfiera con el SW del portal principal
+     que pudiera estar registrado en la raíz del dominio.
+     La verificación de isScope-safe adicional se hace dentro de sw.js.
+     ========================================================= */
+  if ('serviceWorker' in navigator){
+    // Resolvemos el path del SW respecto a la <base href> declarada arriba.
+    const swUrl = new URL('sw.js', document.baseURI).href;
+    const swScope = '/lanzavertical/';
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(swUrl, { scope: swScope })
+        .then(reg => {
+          // Si hay una nueva versión de NUESTRO SW, mostramos el toast
+          reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', () => {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller){
+                const toast = document.getElementById('swToast');
+                if (toast) toast.hidden = false;
+              }
+            });
+          });
+        })
+        .catch(err => console.warn('SW register falló:', err));
+    });
+
+    // Botón del toast: fuerza la activación y recarga
+    const reloadBtn = document.getElementById('swReload');
+    if (reloadBtn){
+      reloadBtn.addEventListener('click', () => {
+        if (navigator.serviceWorker.controller){
+          navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+        }
+        setTimeout(() => window.location.reload(), 400);
+      });
+    }
+  }
+
+})();
+</script>
+</body>
+</html>

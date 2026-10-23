@@ -17,7 +17,7 @@
    4. No se invoca skipWaiting agresivamente fuera de updates propias.
    ====================================================================== */
 
-const APP_VERSION = 'v2.0';
+const APP_VERSION = 'v2.1';
 const CACHE_NAME  = `lanzavertical-pwa-${APP_VERSION}`;
 const APP_SCOPE   = '/lanzavertical/';
 

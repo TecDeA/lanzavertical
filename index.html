@@ -69,6 +69,28 @@
   .head h1 span{color:var(--blue)}
   .head p{margin:0;color:var(--muted);font-size:clamp(.78rem,1.6vw,.94rem);line-height:1.45}
 
+  /* ---------- Chip de versión (tomada del SW) ---------- */
+  .ver-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:.55rem;font-weight:800;letter-spacing:.08em;
+    padding:3px 9px 3px 7px;border-radius:999px;
+    background:rgba(55,214,122,.14);
+    border:1px solid rgba(55,214,122,.45);
+    color:#6ff0a4;vertical-align:middle;
+    text-transform:uppercase;
+    margin-left:8px;transform:translateY(-2px);
+    font-variant-numeric:tabular-nums;
+  }
+  .ver-chip::before{
+    content:"";width:6px;height:6px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 6px var(--green);
+  }
+  .ver-chip.loading{opacity:.55}
+  .ver-chip.loading::before{animation:pulse 1.2s ease-in-out infinite}
+  .ver-chip.error{background:rgba(255,122,89,.14);border-color:rgba(255,122,89,.45);color:#ffb199}
+  .ver-chip.error::before{background:var(--orange);box-shadow:0 0 6px var(--orange)}
+
   /* ---------- Botón de ayuda ---------- */
   .help-btn{
     display:inline-flex;align-items:center;gap:8px;
@@ -145,8 +167,30 @@
     display:grid;gap:clamp(10px,1.6vw,18px);
     grid-template-columns:1fr;
   }
+  /* En pantallas anchas estiramos las columnas a la misma altura
+     y repartimos el espacio extra de la columna izquierda entre
+     sus dos canvas para que se vean tan altos como las tarjetas
+     informativas del lateral derecho. */
   @media (min-width:980px){
-    .layout{grid-template-columns:minmax(0,1.45fr) minmax(310px,1fr);align-items:start}
+    .layout{grid-template-columns:minmax(0,1.45fr) minmax(310px,1fr);align-items:stretch}
+    /* Columna derecha: fluye naturalmente desde arriba */
+    .col:last-child{align-content:start}
+    /* Columna izquierda: reparte el espacio entre scene y graph */
+    .col:first-child{
+      align-content:stretch;
+      grid-template-rows:minmax(0,1.55fr) minmax(0,1fr);
+    }
+    /* Las tarjetas con canvas se vuelven flex para que el canvas
+       llene el espacio restante dentro de la tarjeta */
+    .card.has-canvas{
+      display:flex;flex-direction:column;min-height:0;
+    }
+    .card.has-canvas .canvas-title{flex:0 0 auto}
+    .card.has-canvas canvas{
+      flex:1 1 0;min-height:0;
+      /* Anulamos la altura fija del modo móvil */
+      height:auto !important;
+    }
   }
   .col{display:grid;gap:clamp(10px,1.6vw,18px);min-width:0;align-content:start}
 
@@ -177,6 +221,8 @@
   .canvas-title .sub{font-weight:600;color:var(--dim);font-size:.78rem}
 
   canvas{display:block;width:100%;border-radius:10px}
+  /* Alturas base (móvil): se sobreescriben en el media query
+     de pantallas anchas para igualar la columna derecha. */
   #scene{height:clamp(290px,46vh,540px)}
   #graph{height:clamp(140px,20vh,215px)}
 
@@ -345,7 +391,7 @@
 <header class="head">
   <div class="head-row">
     <div>
-      <h1>Movimiento vertical de <span>uno o dos objetos</span></h1>
+      <h1>Movimiento vertical de <span>uno o dos objetos</span><span class="ver-chip loading" id="verChip" title="Versión del service worker">…</span></h1>
       <p>Simulador PWA · física vertical bajo gravedad común</p>
     </div>
     <button class="help-btn" id="helpBtn" aria-haspopup="dialog" aria-controls="helpModal">
@@ -413,11 +459,11 @@
 
   <!-- ======== Columna principal: visualización ======== -->
   <div class="col">
-    <div class="card">
+    <div class="card has-canvas">
       <div class="canvas-title">Escena espacial <span class="sub">· movimiento vertical de los objetos</span></div>
       <canvas id="scene" aria-label="Simulación espacial del movimiento vertical"></canvas>
     </div>
-    <div class="card">
+    <div class="card has-canvas">
       <div class="canvas-title">Gráfica altura frente a tiempo <span class="sub">· y(t) con punto de encuentro</span></div>
       <canvas id="graph" aria-label="Gráfica altura frente a tiempo"></canvas>
     </div>
@@ -1271,6 +1317,86 @@
   }
 
   /* =========================================================
+     Chip de versión
+     ----------------------------------------------------------------
+     Extrae APP_VERSION de sw.js y la muestra en el chip del título.
+     Estrategia:
+       1) Si hay un SW activo que controle esta página, le pedimos
+          su versión por postMessage (respuesta inmediata).
+       2) En paralelo, hacemos fetch del texto de sw.js para parsear
+          APP_VERSION (útil cuando el SW aún no está activo).
+       3) Si todo falla, mostramos '?' en estado de error.
+     ========================================================= */
+  function setChipVersion(version, isError){
+    const chip = $('verChip');
+    if (!chip) return;
+    chip.classList.remove('loading', 'error');
+    if (isError){
+      chip.classList.add('error');
+      chip.textContent = '?';
+      chip.title = 'No se pudo leer la versión del SW';
+      return;
+    }
+    chip.textContent = version;
+    chip.title = 'Versión del SW: lanzavertical-pwa-' + version;
+  }
+
+  function loadVersionFromSWText(){
+    // Resuelve la URL de sw.js relativa al <base href="/lanzavertical/">
+    const swUrl = new URL('sw.js', document.baseURI).href;
+    fetch(swUrl, { cache: 'no-cache' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(txt => {
+        const m = txt.match(/APP_VERSION\s*=\s*['"`]([^'"`]+)['"`]/);
+        if (!m) throw new Error('APP_VERSION no encontrada');
+        setChipVersion(m[1], false);
+      })
+      .catch(() => {
+        // Si ya habíamos recibido la versión por postMessage, no la
+        // sobreescribimos con error. Comprobamos el estado del chip.
+        const chip = $('verChip');
+        if (chip && !chip.classList.contains('error') && chip.textContent && chip.textContent !== '…'){
+          return;
+        }
+        setChipVersion(null, true);
+      });
+  }
+
+  function loadVersion(){
+    // 1) Intentamos preguntar al SW activo (rápido y always-fresh)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller){
+      const ctrl = navigator.serviceWorker.controller;
+      const channel = new MessageChannel();
+      let answered = false;
+      const timer = setTimeout(() => {
+        if (!answered) loadVersionFromSWText();
+      }, 600);
+      channel.port1.onmessage = (e) => {
+        answered = true;
+        clearTimeout(timer);
+        if (e.data && e.data.type === 'APP_VERSION' && e.data.version){
+          setChipVersion(e.data.version, false);
+        } else {
+          loadVersionFromSWText();
+        }
+      };
+      try {
+        ctrl.postMessage('GET_VERSION', [channel.port2]);
+      } catch {
+        answered = true;
+        clearTimeout(timer);
+        loadVersionFromSWText();
+      }
+    } else {
+      // SW aún no activo: leemos sw.js como texto
+      loadVersionFromSWText();
+    }
+  }
+
+  /* =========================================================
      Arranque
      ========================================================= */
   readUrlParams();
@@ -1279,6 +1405,7 @@
   recompute();
   S.t = 0;
   render();
+  loadVersion();
 
   /* =========================================================
      Service Worker registration (PWA)

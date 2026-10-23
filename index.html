@@ -422,7 +422,8 @@
         <li><strong>Velocidad inicial (v₀):</strong> positiva hacia arriba, negativa hacia abajo. El rango va de −40 a +40 m/s.</li>
         <li><strong>Gravedad (g):</strong> aceleración común a ambos objetos. Tierra ≈ 9.8 m/s², Luna ≈ 1.6 m/s², Júpiter ≈ 24.8 m/s².</li>
         <li><strong>Pausar / Reanudar:</strong> pausa o reanuda la simulación conservando la posición actual. Al pausar se detienen a la vez la caída de los objetos, la gráfica altura/tiempo y los datos instantáneos de la tabla. <kbd>Espacio</kbd> o <kbd>S</kbd> también funcionan.</li>
-        <li><strong>Reiniciar:</strong> vuelve a t = 0 y reanuda la reproducción automáticamente. <kbd>R</kbd> también funciona.</li>
+        <li><strong>Paso a paso:</strong> avanza la simulación en incrementos fijos de 0,1 s, pausando la reproducción. <kbd>F</kbd> también funciona.</li>
+          <li><strong>Reiniciar:</strong> vuelve a t = 0 y reanuda la reproducción automáticamente. <kbd>R</kbd> también funciona.</li>
         <li><strong>Velocidad de reproducción:</strong> multiplica el tiempo simulado para revisar con calma o acelerar.</li>
       </ul>
 
@@ -541,6 +542,7 @@
 
       <div class="actions">
         <button class="btn primary" id="play">▶ Iniciar</button>
+        <button class="btn" id="step">⏭ Paso a paso</button>
         <button class="btn" id="reset">⟲ Reiniciar</button>
       </div>
 
@@ -608,7 +610,7 @@
     h0B:$('h0B'), v0B:$('v0B'),
     h0Bv:$('h0Bv'), v0Bv:$('v0Bv'),
     g:$('g'), gv:$('gv'),
-    play:$('play'), reset:$('reset'),
+    play:$('play'), step:$('step'), reset:$('reset'),
     speed:$('speed'), speedv:$('speedv'),
     scene:$('scene'), graph:$('graph'),
     rstatus:$('rstatus'),
@@ -1252,6 +1254,16 @@
     }
     // Reiniciar solo se activa cuando la simulación ha finalizado.
     els.reset.disabled = !finished;
+    els.step.disabled = finished;
+  }
+
+  // Avanza un paso fijo de tiempo (STEP_DT segundos), pausando si corría.
+  function stepSim(){
+    if (S.t >= S.D.duration - 1e-9) return;
+    stop();
+    S.t = Math.min(S.t + STEP_DT, S.D.duration);
+    render();
+    updatePlayBtn();
   }
 
   function stop(){
@@ -1266,6 +1278,7 @@
     if (keepPlaying) start();
     else render();
   }
+  const STEP_DT = 0.1;
   function start(){
     if (S.playing) return;
     if (S.t >= S.D.duration - 1e-6) S.t = 0;
@@ -1356,6 +1369,9 @@
     else start();
   });
 
+  // Paso a paso: avanza 0,1 s de simulación por pulsación
+  els.step.addEventListener('click', stepSim);
+
   // Reiniciar: reset a t=0 y reanuda la reproducción automáticamente
   els.reset.addEventListener('click', () => resetSim(true));
 
@@ -1365,6 +1381,11 @@
       e.preventDefault();
       if (S.playing){ stop(); render(); }
       else if (!els.play.disabled) start();
+    }
+    // F = Paso a paso
+    if ((e.key === 'f' || e.key === 'F') && e.target === document.body && !els.step.disabled){
+      e.preventDefault();
+      stepSim();
     }
     // R = Reiniciar (reset + autoplay)
     if ((e.key === 'r' || e.key === 'R') && e.target === document.body){

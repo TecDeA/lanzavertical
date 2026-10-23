@@ -421,8 +421,7 @@
         <li><strong>Altura inicial (h₀):</strong> distancia vertical sobre el suelo en el instante inicial. Ambos objetos pueden partir de cualquier altura, incluido el suelo (h = 0).</li>
         <li><strong>Velocidad inicial (v₀):</strong> positiva hacia arriba, negativa hacia abajo. El rango va de −40 a +40 m/s.</li>
         <li><strong>Gravedad (g):</strong> aceleración común a ambos objetos. Tierra ≈ 9.8 m/s², Luna ≈ 1.6 m/s², Júpiter ≈ 24.8 m/s².</li>
-        <li><strong>Reproducir / Pausa:</strong> inicia o pausa la animación conservando la posición actual. <kbd>Espacio</kbd> también funciona.</li>
-        <li><strong>Detener:</strong> detiene la animación y vuelve al instante t = 0 sin reproducir (estado inicial). <kbd>S</kbd> también funciona.</li>
+        <li><strong>Pausar / Reanudar:</strong> pausa o reanuda la simulación conservando la posición actual. Al pausar se detienen a la vez la caída de los objetos, la gráfica altura/tiempo y los datos instantáneos de la tabla. <kbd>Espacio</kbd> o <kbd>S</kbd> también funcionan.</li>
         <li><strong>Reiniciar:</strong> vuelve a t = 0 y reanuda la reproducción automáticamente. <kbd>R</kbd> también funciona.</li>
         <li><strong>Velocidad de reproducción:</strong> multiplica el tiempo simulado para revisar con calma o acelerar.</li>
       </ul>
@@ -541,8 +540,7 @@
       </div>
 
       <div class="actions">
-        <button class="btn primary" id="play">▶ Reproducir</button>
-        <button class="btn" id="stop">⏹ Detener</button>
+        <button class="btn primary" id="play">▶ Reanudar</button>
         <button class="btn" id="reset">⟲ Reiniciar</button>
       </div>
 
@@ -610,7 +608,7 @@
     h0B:$('h0B'), v0B:$('v0B'),
     h0Bv:$('h0Bv'), v0Bv:$('v0Bv'),
     g:$('g'), gv:$('gv'),
-    play:$('play'), stop:$('stop'), reset:$('reset'),
+    play:$('play'), reset:$('reset'),
     speed:$('speed'), speedv:$('speedv'),
     scene:$('scene'), graph:$('graph'),
     rstatus:$('rstatus'),
@@ -1233,8 +1231,11 @@
     els.speedv.textContent = S.speed.toFixed(2).replace(/0$/,'').replace(/\.$/,'') + '×';
   }
 
+  // Botón principal: "Pausar" cuando está reproduciendo, "Reanudar" cuando está parado.
+  // Al pausar, se detiene a la vez la caída, la gráfica y los datos
+  // instantáneos de la tabla (todo se congela en el instante actual).
   function updatePlayBtn(){
-    els.play.textContent = S.playing ? '⏸ Pausa' : '▶ Reproducir';
+    els.play.textContent = S.playing ? '⏸ Pausar' : '▶ Reanudar';
   }
 
   function stop(){
@@ -1248,15 +1249,6 @@
     S.t = 0;
     if (keepPlaying) start();
     else render();
-  }
-  /**
-   * Detener: detiene la animación y vuelve a t = 0 (estado inicial,
-   * sin reproducir). Es el "stop" clásico de un reproductor.
-   */
-  function stopSim(){
-    stop();
-    S.t = 0;
-    render();
   }
   function start(){
     if (S.playing) return;
@@ -1342,26 +1334,20 @@
     updateLabels();
   });
 
+  // Botón principal: pausa/reanuda la simulación (caída + gráfica + tabla).
   els.play.addEventListener('click', () => {
     if (S.playing) { stop(); render(); }
     else start();
   });
 
-  // Detener: stop + reset a t=0 (estado inicial, sin reproducir)
-  els.stop.addEventListener('click', stopSim);
-
   // Reiniciar: reset a t=0 y reanuda la reproducción automáticamente
   els.reset.addEventListener('click', () => resetSim(true));
 
   window.addEventListener('keydown', e => {
-    if (e.code === 'Space' && e.target === document.body){
+    // Espacio / S = Pausar-Reanudar
+    if ((e.code === 'Space' || e.key === 's' || e.key === 'S') && e.target === document.body){
       e.preventDefault();
       if (S.playing){ stop(); render(); } else start();
-    }
-    // S = Detener (stop + reset)
-    if ((e.key === 's' || e.key === 'S') && e.target === document.body){
-      e.preventDefault();
-      stopSim();
     }
     // R = Reiniciar (reset + autoplay)
     if ((e.key === 'r' || e.key === 'R') && e.target === document.body){

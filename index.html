@@ -421,8 +421,9 @@
         <li><strong>Altura inicial (h₀):</strong> distancia vertical sobre el suelo en el instante inicial. Ambos objetos pueden partir de cualquier altura, incluido el suelo (h = 0).</li>
         <li><strong>Velocidad inicial (v₀):</strong> positiva hacia arriba, negativa hacia abajo. El rango va de −40 a +40 m/s.</li>
         <li><strong>Gravedad (g):</strong> aceleración común a ambos objetos. Tierra ≈ 9.8 m/s², Luna ≈ 1.6 m/s², Júpiter ≈ 24.8 m/s².</li>
-        <li><strong>Reproducir / Pausa:</strong> inicia o detiene la animación. <kbd>Espacio</kbd> también funciona.</li>
-        <li><strong>Reiniciar:</strong> vuelve al instante t = 0. <kbd>R</kbd> también funciona.</li>
+        <li><strong>Reproducir / Pausa:</strong> inicia o pausa la animación conservando la posición actual. <kbd>Espacio</kbd> también funciona.</li>
+        <li><strong>Detener:</strong> detiene la animación y vuelve al instante t = 0 sin reproducir (estado inicial). <kbd>S</kbd> también funciona.</li>
+        <li><strong>Reiniciar:</strong> vuelve a t = 0 y reanuda la reproducción automáticamente. <kbd>R</kbd> también funciona.</li>
         <li><strong>Velocidad de reproducción:</strong> multiplica el tiempo simulado para revisar con calma o acelerar.</li>
       </ul>
 
@@ -541,6 +542,7 @@
 
       <div class="actions">
         <button class="btn primary" id="play">▶ Reproducir</button>
+        <button class="btn" id="stop">⏹ Detener</button>
         <button class="btn" id="reset">⟲ Reiniciar</button>
       </div>
 
@@ -608,7 +610,7 @@
     h0B:$('h0B'), v0B:$('v0B'),
     h0Bv:$('h0Bv'), v0Bv:$('v0Bv'),
     g:$('g'), gv:$('gv'),
-    play:$('play'), reset:$('reset'),
+    play:$('play'), stop:$('stop'), reset:$('reset'),
     speed:$('speed'), speedv:$('speedv'),
     scene:$('scene'), graph:$('graph'),
     rstatus:$('rstatus'),
@@ -968,15 +970,32 @@
     ctx.fillStyle = 'rgba(10,15,31,.55)';
     ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
 
+    // ---------- Rejilla + graduación del eje Y (alturas) ----------
+    // Calculamos un paso "bonito" para la escala de alturas
+    const yStep = niceStep(Hmax, 5);
     ctx.strokeStyle = 'rgba(120,145,200,.10)';
     ctx.lineWidth = 1;
+    // Líneas horizontales (una por cada graduación de altura)
+    for (let y = 0; y <= Hmax + 1e-9; y += yStep){
+      const py = Y(y);
+      if (py < y1 - 0.5 || py > y0 + 0.5) continue;
+      if (y > 1e-9){ // no redibujamos el eje X (y=0)
+        ctx.beginPath();
+        ctx.moveTo(x0, py);
+        ctx.lineTo(x1, py);
+        ctx.stroke();
+      }
+    }
+    // Líneas verticales: rejilla simple de 4 divisiones (eje tiempo)
     for (let i = 1; i < 4; i++){
-      const yy = y0 - (i / 4) * (y0 - y1);
-      ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x1, yy); ctx.stroke();
       const xx = x0 + (i / 4) * (x1 - x0);
-      ctx.beginPath(); ctx.moveTo(xx, y1); ctx.lineTo(xx, y0); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(xx, y1);
+      ctx.lineTo(xx, y0);
+      ctx.stroke();
     }
 
+    // ---------- Ejes ----------
     ctx.strokeStyle = 'rgba(140,160,210,.45)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -985,17 +1004,55 @@
     ctx.lineTo(x1, y0);
     ctx.stroke();
 
+    // ---------- Ticks + etiquetas del eje Y (alturas) ----------
     ctx.fillStyle = '#6f7ca6';
     ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    ctx.fillText(fmtTick(Hmax) + ' m', x0 - 5, y1 + 2);
-    ctx.fillText('0', x0 - 5, y0);
+    for (let y = 0; y <= Hmax + 1e-9; y += yStep){
+      const py = Y(y);
+      if (py < y1 - 0.5 || py > y0 + 0.5) continue;
+      // Tick corto hacia fuera del eje
+      ctx.strokeStyle = 'rgba(140,160,210,.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x0 - 4, py);
+      ctx.lineTo(x0, py);
+      ctx.stroke();
+      // Etiqueta numérica
+      ctx.fillStyle = '#6f7ca6';
+      ctx.fillText(fmtTick(y), x0 - 6, py);
+    }
+    // Unidad "m" sobre el eje
+    ctx.fillStyle = '#93a0c8';
+    ctx.font = '700 9px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('m', x0 - 4, y1 - 2);
 
+    // ---------- Etiquetas del eje X (tiempo) ----------
+    ctx.fillStyle = '#6f7ca6';
+    ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('0', x0, y0 + 5);
     ctx.fillText(T.toFixed(1) + ' s', x1, y0 + 5);
+    // Pequeños ticks en el eje X
+    for (let i = 0; i <= 4; i++){
+      const xx = x0 + (i / 4) * (x1 - x0);
+      ctx.strokeStyle = 'rgba(140,160,210,.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(xx, y0);
+      ctx.lineTo(xx, y0 + 4);
+      ctx.stroke();
+    }
+    // Unidad "s" junto a la etiqueta máxima de tiempo
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#93a0c8';
+    ctx.font = '700 9px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillText('t', x1 + 4, y0 + 4);
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -1192,6 +1249,15 @@
     if (keepPlaying) start();
     else render();
   }
+  /**
+   * Detener: detiene la animación y vuelve a t = 0 (estado inicial,
+   * sin reproducir). Es el "stop" clásico de un reproductor.
+   */
+  function stopSim(){
+    stop();
+    S.t = 0;
+    render();
+  }
   function start(){
     if (S.playing) return;
     if (S.t >= S.D.duration - 1e-6) S.t = 0;
@@ -1281,15 +1347,25 @@
     else start();
   });
 
-  els.reset.addEventListener('click', () => resetSim(false));
+  // Detener: stop + reset a t=0 (estado inicial, sin reproducir)
+  els.stop.addEventListener('click', stopSim);
+
+  // Reiniciar: reset a t=0 y reanuda la reproducción automáticamente
+  els.reset.addEventListener('click', () => resetSim(true));
 
   window.addEventListener('keydown', e => {
     if (e.code === 'Space' && e.target === document.body){
       e.preventDefault();
       if (S.playing){ stop(); render(); } else start();
     }
+    // S = Detener (stop + reset)
+    if ((e.key === 's' || e.key === 'S') && e.target === document.body){
+      e.preventDefault();
+      stopSim();
+    }
+    // R = Reiniciar (reset + autoplay)
     if ((e.key === 'r' || e.key === 'R') && e.target === document.body){
-      resetSim(false);
+      resetSim(true);
     }
     if (e.key === 'h' || e.key === 'H'){
       if (e.target === document.body){

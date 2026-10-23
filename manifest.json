@@ -1,0 +1,60 @@
+{
+  "name": "Simulador de Movimiento Vertical",
+  "short_name": "MovVertical",
+  "description": "Simulador del movimiento vertical de uno o dos objetos bajo gravedad común, con cálculo del punto y el instante de encuentro.",
+  "id": "/lanzavertical/?source=pwa",
+  "start_url": "/lanzavertical/?source=pwa",
+  "scope": "/lanzavertical/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["education", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/lanzavertical/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/lanzavertical/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/lanzavertical/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/lanzavertical/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "1 objeto",
+      "short_name": "1",
+      "description": "Iniciar en modo de un solo objeto",
+      "url": "/lanzavertical/?mode=1&source=pwa",
+      "icons": [{"src": "/lanzavertical/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "2 objetos",
+      "short_name": "2",
+      "description": "Iniciar en modo de dos objetos (con cálculo de encuentro)",
+      "url": "/lanzavertical/?mode=2&source=pwa",
+      "icons": [{"src": "/lanzavertical/icons/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

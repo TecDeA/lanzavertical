@@ -17,8 +17,9 @@
    4. No se invoca skipWaiting agresivamente fuera de updates propias.
    ====================================================================== */
 
-const CACHE_NAME = 'lanzavertical-pwa-v1';
-const APP_SCOPE  = '/lanzavertical/';
+const APP_VERSION = 'v1';
+const CACHE_NAME  = `lanzavertical-pwa-${APP_VERSION}`;
+const APP_SCOPE   = '/lanzavertical/';
 
 const APP_ASSETS = [
   '/lanzavertical/',
@@ -117,7 +118,15 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-/* ---------- Mensajería: actualización controlada ---------- */
+/* ---------- Mensajería: actualización controlada + consulta de versión ---------- */
 self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  const data = event.data;
+  if (data === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  // Permite a la página consultar la versión del SW activo
+  if (data === 'GET_VERSION' && event.source) {
+    event.source.postMessage({ type: 'APP_VERSION', version: APP_VERSION, cache: CACHE_NAME });
+  }
 });

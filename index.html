@@ -540,7 +540,7 @@
       </div>
 
       <div class="actions">
-        <button class="btn primary" id="play">▶ Reanudar</button>
+        <button class="btn primary" id="play">▶ Iniciar</button>
         <button class="btn" id="reset">⟲ Reiniciar</button>
       </div>
 
@@ -1231,11 +1231,27 @@
     els.speedv.textContent = S.speed.toFixed(2).replace(/0$/,'').replace(/\.$/,'') + '×';
   }
 
-  // Botón principal: "Pausar" cuando está reproduciendo, "Reanudar" cuando está parado.
-  // Al pausar, se detiene a la vez la caída, la gráfica y los datos
-  // instantáneos de la tabla (todo se congela en el instante actual).
+  // Botón principal: "Iniciar" si no ha empezado, "Pausar" cuando está
+  // reproduciendo, "Reanudar" si está pausado y "Finalizada" (deshabilitado)
+  // al terminar. Al pausar, se detiene a la vez la caída, la gráfica y los
+  // datos instantáneos de la tabla (todo se congela en el instante actual).
   function updatePlayBtn(){
-    els.play.textContent = S.playing ? '⏸ Pausar' : '▶ Reanudar';
+    const finished = S.t >= S.D.duration - 1e-9;
+    if (S.playing){
+      els.play.textContent = '⏸ Pausar';
+      els.play.disabled = false;
+    } else if (finished){
+      els.play.textContent = 'Finalizada';
+      els.play.disabled = true;
+    } else if (S.t > 0){
+      els.play.textContent = '▶ Reanudar';
+      els.play.disabled = false;
+    } else {
+      els.play.textContent = '▶ Iniciar';
+      els.play.disabled = false;
+    }
+    // Reiniciar solo se activa cuando la simulación ha finalizado.
+    els.reset.disabled = !finished;
   }
 
   function stop(){
@@ -1347,7 +1363,8 @@
     // Espacio / S = Pausar-Reanudar
     if ((e.code === 'Space' || e.key === 's' || e.key === 'S') && e.target === document.body){
       e.preventDefault();
-      if (S.playing){ stop(); render(); } else start();
+      if (S.playing){ stop(); render(); }
+      else if (!els.play.disabled) start();
     }
     // R = Reiniciar (reset + autoplay)
     if ((e.key === 'r' || e.key === 'R') && e.target === document.body){
@@ -1466,6 +1483,7 @@
   updateLabels();
   recompute();
   S.t = 0;
+  updatePlayBtn();
   render();
   loadVersion();
 

@@ -1384,25 +1384,37 @@
   els.reset.addEventListener('click', () => resetSim(true));
 
   window.addEventListener('keydown', e => {
-    // Espacio / S = Pausar-Reanudar
-    if ((e.code === 'Space' || e.key === 's' || e.key === 'S') && e.target === document.body){
+    // Los atajos no actúan mientras se escribe en un campo del formulario.
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' ||
+                         t.tagName === 'SELECT' || t.isContentEditable);
+    if (typing) return;
+
+    // H = abre/cierra la ayuda (disponible también con el modal abierto)
+    if (e.key === 'h' || e.key === 'H'){
+      e.preventDefault();
+      if (els.helpModal.hidden) openModal(); else closeModal();
+      return;
+    }
+    // Con la ayuda abierta, el resto de atajos no actúan
+    if (!els.helpModal.hidden) return;
+
+    // Espacio / S = Iniciar-Pausar-Reanudar. preventDefault evita que el
+    // botón con foco se active también y dispare la acción por duplicado.
+    if (e.code === 'Space' || e.key === 's' || e.key === 'S'){
       e.preventDefault();
       if (S.playing){ stop(); render(); }
       else if (!els.play.disabled) start();
     }
     // F = Paso a paso
-    if ((e.key === 'f' || e.key === 'F') && e.target === document.body && !els.step.disabled){
+    if (e.key === 'f' || e.key === 'F'){
       e.preventDefault();
-      stepSim();
+      if (!els.step.disabled) stepSim();
     }
-    // R = Reiniciar (reset + autoplay)
-    if ((e.key === 'r' || e.key === 'R') && e.target === document.body){
-      resetSim(true);
-    }
-    if (e.key === 'h' || e.key === 'H'){
-      if (e.target === document.body){
-        if (els.helpModal.hidden) openModal(); else closeModal();
-      }
+    // R = Reiniciar (reset + autoplay), activo solo al finalizar
+    if (e.key === 'r' || e.key === 'R'){
+      e.preventDefault();
+      if (!els.reset.disabled) resetSim(true);
     }
   });
 
